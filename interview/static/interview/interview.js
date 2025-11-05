@@ -28,6 +28,8 @@ window.addEventListener("DOMContentLoaded", function() {
   }
 });
 
+
+
 async function startInterview() {
   const name = document.getElementById("name").value.trim();
   const email = document.getElementById("email").value.trim();
@@ -97,37 +99,12 @@ async function loadNextQuestion() {
     return;
   }
 
-  // Check if interview is complete - UPDATED LOGIC
-  if (data.interview_complete || (data.message && data.message.includes("completed"))) {
-    // Show completion message and evaluation button
-    document.getElementById("question-text").textContent = "🎉 Interview Completed!";
-    document.getElementById("feedback").textContent = data.message || "You've answered all questions for this session.";
-    document.getElementById("answer").value = "";
-    document.getElementById("answer").style.display = "none";
-    
-    // Hide submit button, show evaluation button
-    document.getElementById("submit-btn").classList.add("hidden");
-    document.getElementById("next-btn").classList.add("hidden");
-    
-    // Create or show evaluation button
-    let evalBtn = document.getElementById("eval-btn");
-    if (!evalBtn) {
-      evalBtn = document.createElement("button");
-      evalBtn.id = "eval-btn";
-      evalBtn.textContent = "View Evaluation Summary";
-      evalBtn.className = "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded";
-      evalBtn.onclick = showSummary;
-      document.querySelector(".container").appendChild(evalBtn);
-    } else {
-      evalBtn.classList.remove("hidden");
-    }
-    
-    // Update progress display
-    if (data.session_progress) {
-      document.getElementById("progress").textContent = data.session_progress;
-    }
-    
-    return;
+  // Check if interview is complete
+  if (data.interview_complete === true){
+    // Redirect to Django summary page
+    document.getElementById("question-section").classList.add("hidden");
+    document.getElementById("summary-section").classList.remove("hidden");
+    showSummary();
   }
 
   // Normal question flow
@@ -135,7 +112,7 @@ async function loadNextQuestion() {
   document.getElementById("question-text").textContent = data.question_text;
   document.getElementById("feedback").textContent = "";
   document.getElementById("answer").value = "";
-  document.getElementById("answer").style.display = "block"; // Make sure answer box is visible
+  document.getElementById("answer").style.display = "block";
   
   // Hide next button and show submit button
   document.getElementById("next-btn").classList.add("hidden");
@@ -149,7 +126,6 @@ async function loadNextQuestion() {
     document.getElementById("progress").textContent = "";
   }
 }
-
 
 async function submitAnswer() {
   const answer = document.getElementById("answer").value.trim();
@@ -192,15 +168,31 @@ async function submitAnswer() {
 }
 
 async function showSummary() {
-  document.getElementById("question-section").classList.add("hidden");
-  document.getElementById("summary-section").classList.remove("hidden");
-
   const res = await fetch(`/interview/summary/?session_id=${sessionId}`);
   const data = await res.json();
 
-  document.getElementById("summary").textContent = JSON.stringify(data, null, 2);
-  
-  // Clear localStorage after completing interview
-  localStorage.removeItem("interviewSessionId");
-  localStorage.removeItem("interviewEmail");
+  document.getElementById("question-section").classList.add("hidden");
+  document.getElementById("summary-section").classList.remove("hidden");
+
+  // 🟢 Build formatted summary
+  document.getElementById("summary").innerHTML = `
+    <strong>Candidate:</strong> ${data.candidate}<br>
+    <strong>Email:</strong> ${data.email}<br>
+    <strong>Total Questions:</strong> ${data.total_questions}<br>
+    <strong>Average Score:</strong> ${data.average_score}<br>
+    <strong>Weak Topics:</strong> ${data.weak_topics.join(", ")}<br><br>
+
+    <h3>Details:</h3>
+    ${data.details.map(d => `
+      <div style="margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">
+        <strong>Question:</strong> ${d.question}<br>
+        <strong>Your Answer:</strong> ${d.answer}<br>
+        <strong>Feedback:</strong> ${d.feedback}<br>
+        <strong>Score:</strong> ${d.score}<br>
+        <strong>Topic:</strong> ${d.topic}
+      </div>
+    `).join("")}
+  `;
 }
+
+

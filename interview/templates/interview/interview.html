@@ -41,6 +41,7 @@
       cursor: not-allowed;
     }
   </style>
+
 </head>
 <body>
   <h1>🤖 AI Python Interview</h1>
@@ -50,10 +51,9 @@
   <input id="name" placeholder="Enter your name"><br><br>
   <input id="email" placeholder="Enter your email"><br><br>
   
-  <select id="question-count">
-    <option value="5" selected>5 Questions</option>
-    <option value="10" >10 Questions</option>
-  </select><br><br>
+  <select id="question-count"></select>
+
+
 
   <select id="difficulty">
     <option value="easy" selected>Easy</option>
@@ -77,8 +77,16 @@
 
   <div id="summary-section" class="card hidden">
     <h2>Interview Summary</h2>
-    <pre id="summary"></pre>
+    <div id="summary"></div>
     <button onclick="clearSession()">Start New Interview</button>
   </div>
+<script>
+  const questionCount = document.getElementById("question-count");
+  questionCount.innerHTML = Array.from({length:10},(_,i)=>
+    `<option value="${i+1}"${i? "" : " selected"}>${i+1} Questions</option>`
+  ).join('');
+</script>
+
 </body>
+
 </html>
