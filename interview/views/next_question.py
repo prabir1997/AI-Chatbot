@@ -56,7 +56,7 @@ class NextQuestionAPI(APIView):
             return Response(
                 {
                     "interview_complete": True,
-                    "message": "Interview completed! Please proceed to evaluation.",
+                    "message": "Interview completed. Please proceed to evaluation.",
                     "session_progress": f"Session Complete: {session_answered_count}/{target_count} answered",
                 }
             )
