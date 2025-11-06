@@ -10,23 +10,44 @@ function clearSession() {
 }
 
 // Check for existing session on page load
-window.addEventListener("DOMContentLoaded", function() {
+window.addEventListener("DOMContentLoaded", function () {
   const savedSessionId = localStorage.getItem("interviewSessionId");
   const savedEmail = localStorage.getItem("interviewEmail");
-  
+
   if (savedSessionId && savedEmail) {
     // Restore session data
     sessionId = savedSessionId;
     document.getElementById("email").value = savedEmail;
-    
+
     // Hide start section and show question section
     document.getElementById("start-section").classList.add("hidden");
     document.getElementById("question-section").classList.remove("hidden");
-    
+
     // Load next question to continue the interview
     loadNextQuestion();
   }
 });
+
+async function loadTopics() {
+  try {
+    const res = await fetch("/interview/get_topics/");
+    const data = await res.json();
+    const topicSelect = document.getElementById("topic");
+
+    // Populate dropdown
+    data.topics.forEach(topic => {
+      const opt = document.createElement("option");
+      opt.value = topic;
+      opt.textContent = topic;
+      topicSelect.appendChild(opt);
+    });
+  } catch (error) {
+    console.error("Error loading topics:", error);
+  }
+}
+
+// Load topics on page load
+window.addEventListener("DOMContentLoaded", loadTopics);
 
 
 
@@ -44,7 +65,7 @@ async function startInterview() {
   // Check if we have an existing session for this email
   const savedSessionId = localStorage.getItem("interviewSessionId");
   const savedEmail = localStorage.getItem("interviewEmail");
-  
+
   if (savedSessionId && savedEmail && savedEmail.toLowerCase() === email.toLowerCase()) {
     // Resume existing session
     sessionId = savedSessionId;
@@ -54,12 +75,12 @@ async function startInterview() {
     const res = await fetch("/interview/start_session/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-      name, 
-      email, 
-      question_count: parseInt(questionCount), // Send selected count
-      difficulty: difficulty // Send selected difficulty
-    })
+      body: JSON.stringify({
+        name,
+        email,
+        question_count: parseInt(questionCount), // Send selected count
+        difficulty: difficulty // Send selected difficulty
+      })
     });
 
     const data = await res.json();
@@ -90,7 +111,13 @@ async function loadNextQuestion() {
     return;
   }
 
-  const res = await fetch(`/interview/next-question/?session_id=${sessionId}`);
+  const topicSelect = document.getElementById("topic");
+  const selectedTopics = Array.from(topicSelect.selectedOptions)
+  .map(opt => opt.value)
+  .filter(topic => topic !== ""); // Remove empty "All Topics"
+  const topicParam = selectedTopics.join(',');
+
+  const res = await fetch(`/interview/next-question/?session_id=${sessionId}&topic=${topicParam}`);
   const data = await res.json();
 
   if (data.error) {
@@ -100,7 +127,7 @@ async function loadNextQuestion() {
   }
 
   // Check if interview is complete
-  if (data.interview_complete === true){
+  if (data.interview_complete === true) {
     // Redirect to Django summary page
     document.getElementById("question-section").classList.add("hidden");
     document.getElementById("summary-section").classList.remove("hidden");
@@ -113,12 +140,12 @@ async function loadNextQuestion() {
   document.getElementById("feedback").textContent = "";
   document.getElementById("answer").value = "";
   document.getElementById("answer").style.display = "block";
-  
+
   // Hide next button and show submit button
   document.getElementById("next-btn").classList.add("hidden");
   document.getElementById("submit-btn").classList.remove("hidden");
   document.getElementById("submit-btn").disabled = false;
-  
+
   // Display progress if available
   if (data.session_progress) {
     document.getElementById("progress").textContent = data.session_progress;
@@ -129,6 +156,7 @@ async function loadNextQuestion() {
 
 async function submitAnswer() {
   const answer = document.getElementById("answer").value.trim();
+  const feedbackEl = document.getElementById("feedback");
 
   if (!answer) {
     alert("Please type your answer before submitting!");
@@ -138,8 +166,9 @@ async function submitAnswer() {
   // Show loader and disable submit button
   document.getElementById("loader").classList.remove("hidden");
   document.getElementById("submit-btn").disabled = true;
-  document.getElementById("feedback").textContent = "";
-  
+  feedbackEl.textContent = "";
+  feedbackEl.classList.remove("correct-glow", "wrong-glow"); // 🔹 clear previous glow
+
   try {
     const res = await fetch("/interview/submit-answer/", {
       method: "POST",
@@ -154,7 +183,20 @@ async function submitAnswer() {
     const data = await res.json();
 
     document.getElementById("feedback").textContent = data.feedback || "No feedback available.";
-    
+    feedbackEl.classList.add("feedback"); // 🔹 ensure base style
+
+    // 🔹 Add glow effect based on result
+    if (data.is_correct) {
+      feedbackEl.classList.add("correct-glow");
+    } else {
+      feedbackEl.classList.add("wrong-glow");
+    }
+
+    // 🔹 Optional: remove glow after 2 seconds
+    setTimeout(() => {
+      feedbackEl.classList.remove("correct-glow", "wrong-glow");
+    }, 2000);
+
     // Hide submit button and show next button
     document.getElementById("submit-btn").classList.add("hidden");
     document.getElementById("next-btn").classList.remove("hidden");
@@ -194,5 +236,4 @@ async function showSummary() {
     `).join("")}
   `;
 }
-
 
