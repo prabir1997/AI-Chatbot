@@ -111,46 +111,60 @@ async function loadNextQuestion() {
     return;
   }
 
-  const topicSelect = document.getElementById("topic");
-  const selectedTopics = Array.from(topicSelect.selectedOptions)
-  .map(opt => opt.value)
-  .filter(topic => topic !== ""); // Remove empty "All Topics"
-  const topicParam = selectedTopics.join(',');
+  // Show loader and disable next button
+  document.getElementById("loader").classList.remove("hidden");
+  document.getElementById("next-btn").disabled = true;
 
-  const res = await fetch(`/interview/next-question/?session_id=${sessionId}&topic=${topicParam}`);
-  const data = await res.json();
+  try {
+    const topicSelect = document.getElementById("topic");
+    const selectedTopics = Array.from(topicSelect.selectedOptions)
+      .map(opt => opt.value)
+      .filter(topic => topic !== ""); // Remove empty "All Topics"
+    const topicParam = selectedTopics.join(',');
 
-  if (data.error) {
-    console.error("Error loading question:", data.error);
-    alert("Error loading question: " + data.error);
-    return;
-  }
+    const res = await fetch(`/interview/next-question/?session_id=${sessionId}&topic=${topicParam}`);
+    const data = await res.json();
 
-  // Check if interview is complete
-  if (data.interview_complete === true) {
-    // Redirect to Django summary page
-    document.getElementById("question-section").classList.add("hidden");
-    document.getElementById("summary-section").classList.remove("hidden");
-    showSummary();
-  }
+    if (data.error) {
+      console.error("Error loading question:", data.error);
+      alert("Error loading question: " + data.error);
+      return;
+    }
 
-  // Normal question flow
-  currentQuestion = data;
-  document.getElementById("question-text").textContent = data.question_text;
-  document.getElementById("feedback").textContent = "";
-  document.getElementById("answer").value = "";
-  document.getElementById("answer").style.display = "block";
 
-  // Hide next button and show submit button
-  document.getElementById("next-btn").classList.add("hidden");
-  document.getElementById("submit-btn").classList.remove("hidden");
-  document.getElementById("submit-btn").disabled = false;
 
-  // Display progress if available
-  if (data.session_progress) {
-    document.getElementById("progress").textContent = data.session_progress;
-  } else {
-    document.getElementById("progress").textContent = "";
+    // Check if interview is complete
+    if (data.interview_complete === true) {
+      // Redirect to Django summary page
+      document.getElementById("question-section").classList.add("hidden");
+      document.getElementById("summary-section").classList.remove("hidden");
+      showSummary();
+    }
+
+    // Normal question flow
+    currentQuestion = data;
+    document.getElementById("question-text").textContent = data.question_text;
+    document.getElementById("feedback").textContent = "";
+    document.getElementById("answer").value = "";
+    document.getElementById("answer").style.display = "block";
+
+    // Hide next button and show submit button
+    document.getElementById("next-btn").classList.add("hidden");
+    document.getElementById("submit-btn").classList.remove("hidden");
+    document.getElementById("submit-btn").disabled = false;
+
+    // Display progress if available
+    if (data.session_progress) {
+      document.getElementById("progress").textContent = data.session_progress;
+    } else {
+      document.getElementById("progress").textContent = "";
+    }
+  } catch (error) {
+    alert("Error loading question: " + error.message);
+  } finally {
+    // Hide loader and re-enable next button
+    document.getElementById("loader").classList.add("hidden");
+    document.getElementById("next-btn").disabled = false;
   }
 }
 
