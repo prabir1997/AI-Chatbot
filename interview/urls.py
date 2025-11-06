@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import NextQuestionAPI, QuestionBankView, SubmitAnswerAPI
+from .views import NextQuestionAPI, QuestionBankView, SubmitAnswerAPI, HistoryAPI
 from . import views
 
 urlpatterns = [
@@ -12,4 +12,6 @@ urlpatterns = [
     path("ui/", views.interview_ui, name="interview-ui"),  # 👈 New
     
     path("question_bank/", QuestionBankView.as_view(), name="question-bank"),  # 👈 New
+    
+    path('history/', HistoryAPI.as_view(), name='history'),
 ]

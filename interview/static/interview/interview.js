@@ -1,7 +1,13 @@
 let sessionId = null;
 let currentQuestion = null;
 
-// Clear session helper function
+// ==================== INITIALIZATION ====================
+window.addEventListener("DOMContentLoaded", function () {
+  loadTopics();
+  checkExistingSession();
+});
+
+// ==================== SESSION MANAGEMENT ====================
 function clearSession() {
   localStorage.removeItem("interviewSessionId");
   localStorage.removeItem("interviewEmail");
@@ -9,109 +15,95 @@ function clearSession() {
   location.reload();
 }
 
-// Check for existing session on page load
-window.addEventListener("DOMContentLoaded", function () {
+function checkExistingSession() {
   const savedSessionId = localStorage.getItem("interviewSessionId");
   const savedEmail = localStorage.getItem("interviewEmail");
 
   if (savedSessionId && savedEmail) {
-    // Restore session data
     sessionId = savedSessionId;
     document.getElementById("email").value = savedEmail;
-
-    // Hide start section and show question section
-    document.getElementById("start-section").classList.add("hidden");
+    showDashboard(savedEmail);
+    document.getElementById("dashboard-section").classList.add("hidden");
     document.getElementById("question-section").classList.remove("hidden");
-
-    // Load next question to continue the interview
     loadNextQuestion();
-  }
-});
-
-async function loadTopics() {
-  try {
-    const res = await fetch("/interview/get_topics/");
-    const data = await res.json();
-    const topicSelect = document.getElementById("topic");
-
-    // Populate dropdown
-    data.topics.forEach(topic => {
-      const opt = document.createElement("option");
-      opt.value = topic;
-      opt.textContent = topic;
-      topicSelect.appendChild(opt);
-    });
-  } catch (error) {
-    console.error("Error loading topics:", error);
   }
 }
 
-// Load topics on page load
-window.addEventListener("DOMContentLoaded", loadTopics);
+// ==================== USER FLOW ====================
+function handleLogin() {
+  const name = document.getElementById('name').value;
+  const email = document.getElementById('email').value;
 
+  if (!name || !email) {
+    alert('Please enter name and email');
+    return;
+  }
 
+  localStorage.setItem('userName', name);
+  localStorage.setItem('userEmail', email);
+  showDashboard(email);
+}
+
+function showDashboard(email) {
+  document.getElementById('login-section').classList.add('hidden');
+  document.getElementById('dashboard-section').classList.remove('hidden');
+  loadUserHistory(email);
+}
 
 async function startInterview() {
+  document.getElementById('dashboard-section').classList.add('hidden');
+  document.getElementById('question-section').classList.remove('hidden');
+
   const name = document.getElementById("name").value.trim();
   const email = document.getElementById("email").value.trim();
-  const questionCount = document.getElementById("question-count").value; // Get selected value
-  const difficulty = document.getElementById("difficulty").value; // Get selected value
+  const questionCount = document.getElementById("question-count").value;
+  const difficulty = document.getElementById("difficulty").value;
 
   if (!name || !email) {
     alert("Please enter your name and email!");
     return;
   }
 
-  // Check if we have an existing session for this email
   const savedSessionId = localStorage.getItem("interviewSessionId");
   const savedEmail = localStorage.getItem("interviewEmail");
 
   if (savedSessionId && savedEmail && savedEmail.toLowerCase() === email.toLowerCase()) {
-    // Resume existing session
     sessionId = savedSessionId;
     console.log("Resuming existing session:", sessionId);
   } else {
-    // Start new session
     const res = await fetch("/interview/start_session/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name,
         email,
-        question_count: parseInt(questionCount), // Send selected count
-        difficulty: difficulty // Send selected difficulty
+        question_count: parseInt(questionCount),
+        difficulty: difficulty
       })
     });
 
     const data = await res.json();
-
     if (!data.session_id) {
       alert("Error starting session!");
-      console.log(data);
       return;
     }
 
     sessionId = data.session_id;
-    // Save session to localStorage
     localStorage.setItem("interviewSessionId", sessionId);
     localStorage.setItem("interviewEmail", email);
   }
 
-  document.getElementById("start-section").classList.add("hidden");
-  document.getElementById("question-section").classList.remove("hidden");
-
   loadNextQuestion();
 }
 
+// ==================== QUESTION FLOW ====================
 async function loadNextQuestion() {
   if (!sessionId) {
-    console.error("No session ID available");
     alert("Session expired. Please start a new interview.");
     clearSession();
     return;
   }
 
-  // Show loader and disable next button
   document.getElementById("loader").classList.remove("hidden");
   document.getElementById("next-btn").disabled = true;
 
@@ -119,50 +111,37 @@ async function loadNextQuestion() {
     const topicSelect = document.getElementById("topic");
     const selectedTopics = Array.from(topicSelect.selectedOptions)
       .map(opt => opt.value)
-      .filter(topic => topic !== ""); // Remove empty "All Topics"
+      .filter(topic => topic !== "");
     const topicParam = selectedTopics.join(',');
 
     const res = await fetch(`/interview/next-question/?session_id=${sessionId}&topic=${topicParam}`);
     const data = await res.json();
 
     if (data.error) {
-      console.error("Error loading question:", data.error);
       alert("Error loading question: " + data.error);
       return;
     }
 
-
-
-    // Check if interview is complete
     if (data.interview_complete === true) {
-      // Redirect to Django summary page
       document.getElementById("question-section").classList.add("hidden");
       document.getElementById("summary-section").classList.remove("hidden");
       showSummary();
+      return;
     }
 
-    // Normal question flow
     currentQuestion = data;
     document.getElementById("question-text").textContent = data.question_text;
     document.getElementById("feedback").textContent = "";
     document.getElementById("answer").value = "";
-    document.getElementById("answer").style.display = "block";
-
-    // Hide next button and show submit button
+    
     document.getElementById("next-btn").classList.add("hidden");
     document.getElementById("submit-btn").classList.remove("hidden");
     document.getElementById("submit-btn").disabled = false;
 
-    // Display progress if available
-    if (data.session_progress) {
-      document.getElementById("progress").textContent = data.session_progress;
-    } else {
-      document.getElementById("progress").textContent = "";
-    }
+    document.getElementById("progress").textContent = data.session_progress || "";
   } catch (error) {
     alert("Error loading question: " + error.message);
   } finally {
-    // Hide loader and re-enable next button
     document.getElementById("loader").classList.add("hidden");
     document.getElementById("next-btn").disabled = false;
   }
@@ -177,11 +156,10 @@ async function submitAnswer() {
     return;
   }
 
-  // Show loader and disable submit button
   document.getElementById("loader").classList.remove("hidden");
   document.getElementById("submit-btn").disabled = true;
   feedbackEl.textContent = "";
-  feedbackEl.classList.remove("correct-glow", "wrong-glow"); // 🔹 clear previous glow
+  feedbackEl.classList.remove("correct-glow", "wrong-glow");
 
   try {
     const res = await fetch("/interview/submit-answer/", {
@@ -195,42 +173,56 @@ async function submitAnswer() {
     });
 
     const data = await res.json();
+    feedbackEl.textContent = data.feedback || "No feedback available.";
+    feedbackEl.classList.add("feedback");
 
-    document.getElementById("feedback").textContent = data.feedback || "No feedback available.";
-    feedbackEl.classList.add("feedback"); // 🔹 ensure base style
-
-    // 🔹 Add glow effect based on result
     if (data.is_correct) {
       feedbackEl.classList.add("correct-glow");
     } else {
       feedbackEl.classList.add("wrong-glow");
     }
 
-    // 🔹 Optional: remove glow after 2 seconds
     setTimeout(() => {
       feedbackEl.classList.remove("correct-glow", "wrong-glow");
     }, 2000);
 
-    // Hide submit button and show next button
     document.getElementById("submit-btn").classList.add("hidden");
     document.getElementById("next-btn").classList.remove("hidden");
   } catch (error) {
     alert("Error submitting answer: " + error.message);
     document.getElementById("submit-btn").disabled = false;
   } finally {
-    // Hide loader regardless of success or failure
     document.getElementById("loader").classList.add("hidden");
   }
+}
+
+// ==================== DATA LOADING ====================
+async function loadTopics() {
+  try {
+    const res = await fetch("/interview/get_topics/");
+    const data = await res.json();
+    const topicSelect = document.getElementById("topic");
+
+    data.topics.forEach(topic => {
+      const opt = document.createElement("option");
+      opt.value = topic;
+      opt.textContent = topic;
+      topicSelect.appendChild(opt);
+    });
+  } catch (error) {
+    console.error("Error loading topics:", error);
+  }
+}
+
+async function loadUserHistory(email) {
+  // To be implemented - will fetch and display user's interview history
+  console.log("Loading history for:", email);
 }
 
 async function showSummary() {
   const res = await fetch(`/interview/summary/?session_id=${sessionId}`);
   const data = await res.json();
 
-  document.getElementById("question-section").classList.add("hidden");
-  document.getElementById("summary-section").classList.remove("hidden");
-
-  // 🟢 Build formatted summary
   document.getElementById("summary").innerHTML = `
     <strong>Candidate:</strong> ${data.candidate}<br>
     <strong>Email:</strong> ${data.email}<br>
@@ -251,3 +243,18 @@ async function showSummary() {
   `;
 }
 
+
+// ==================== EVENT LISTENERS SETUP ====================
+window.addEventListener("DOMContentLoaded", function () {
+  // Set up all event listeners
+  document.getElementById("login-btn").addEventListener("click", handleLogin);
+  document.getElementById("start-interview-btn").addEventListener("click", startInterview);
+  document.getElementById("submit-btn").addEventListener("click", submitAnswer);
+  document.getElementById("next-btn").addEventListener("click", loadNextQuestion);
+  document.getElementById("clear-session-btn").addEventListener("click", clearSession);
+  document.getElementById("new-interview-btn").addEventListener("click", clearSession);
+
+  // Initialize the app
+  loadTopics();
+  checkExistingSession();
+});

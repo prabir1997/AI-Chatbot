@@ -3,58 +3,68 @@
 <head>
   <meta charset="UTF-8">
   <title>AI Python Interview</title>
-  <script src="/static/interview/interview.js"></script>
- <link rel="stylesheet" href="/static/interview/style.css">
-
+  <link rel="stylesheet" href="/static/interview/style.css">
 </head>
 <body>
   <h1>🤖 AI Python Interview</h1>
 
-  <div id="start-section" class="card">
-  <h3>Start New Interview</h3>
-  <input id="name" placeholder="Enter your name"><br><br>
-  <input id="email" placeholder="Enter your email"><br><br>
-  
-  <select id="question-count"></select>
+  <!-- Login Section (Initially Visible) -->
+  <div id="login-section" class="card">
+    <h3>Welcome to AI Python Interview</h3>
+    <input id="name" placeholder="Enter your name"><br><br>
+    <input id="email" placeholder="Enter your email"><br><br>
+    <button id="login-btn">Login / Start</button>
+  </div>
 
+  <!-- Dashboard Section (Initially Hidden) -->
+  <div id="dashboard-section" class="card hidden">
+    <!-- Start Interview Section -->
+    <div id="start-interview-section">
+      <h3>Start New Interview</h3>
+      <select id="question-count"></select>
+      <select id="difficulty">
+        <option value="easy" selected>Easy</option>
+        <option value="medium">Medium</option>
+        <option value="hard">Hard</option>
+      </select><br><br>
+      <select id="topic" multiple>
+        <option value="" selected>All Topics</option>
+      </select><br><br>
+      <button id="start-interview-btn">Start Interview</button>
+    </div>
 
+    <!-- History Section -->
+    <div id="history-section">
+      <h3>Your Interview History</h3>
+      <div id="history-list"></div>
+    </div>
+  </div>
 
-  <select id="difficulty">
-    <option value="easy" selected>Easy</option>
-    <option value="medium" >Medium</option>
-    <option value="hard">Hard</option>
-  </select><br><br>
-
-<select id="topic">
-  <option value="" multiple>All Topics</option>
-</select><br><br>
-
-  <button onclick="startInterview()">Start Interview</button>
-</div>
-
+  <!-- Interview Session (Initially Hidden) -->
   <div id="question-section" class="card hidden">
-    <button onclick="clearSession()" style="float: right; background-color: #ff4444; color: white;">Clear Session</button>
+    <button id="clear-session-btn" style="float: right; background-color: #ff4444; color: white;">Clear Session</button>
     <div id="progress" style="margin-bottom: 10px; font-weight: bold; color: #007bff;"></div>
     <h3 id="question-text"></h3>
     <textarea id="answer" rows="4" cols="60" placeholder="Type your answer here..."></textarea><br>
-    <button id="submit-btn" onclick="submitAnswer()">Submit Answer</button>
+    <button id="submit-btn">Submit Answer</button>
     <div id="loader" class="loader hidden"></div>
     <p id="feedback"></p>
-    <button id="next-btn" onclick="loadNextQuestion()" class="hidden" style="margin-top: 15px; background-color: #007bff; color: white;">Next Question</button>
+    <button id="next-btn" class="hidden" style="margin-top: 15px; background-color: #007bff; color: white;">Next Question</button>
   </div>
 
   <div id="summary-section" class="card hidden">
     <h2>Interview Summary</h2>
     <div id="summary"></div>
-    <button onclick="clearSession()">Start New Interview</button>
+    <button id="new-interview-btn">Start New Interview</button>
   </div>
-<script>
-  const questionCount = document.getElementById("question-count");
-  questionCount.innerHTML = Array.from({length:10},(_,i)=>
-    `<option value="${i+1}"${i? "" : " selected"}>${i+1} Questions</option>`
-  ).join('');
-</script>
 
+  <script src="/static/interview/interview.js"></script>
+  <script>
+    // Initialize question count dropdown
+    const questionCount = document.getElementById("question-count");
+    questionCount.innerHTML = Array.from({length:10},(_,i)=>
+      `<option value="${i+1}"${i? "" : " selected"}>${i+1} Questions</option>`
+    ).join('');
+  </script>
 </body>
-
 </html>
