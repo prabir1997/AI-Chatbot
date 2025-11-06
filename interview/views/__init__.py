@@ -26,6 +26,19 @@ genai.configure(api_key="AIzaSyDJ6TxQW9viXxpqXhvEmLSKUDrD3X76XX0")  # ⬅️ rep
 model = genai.GenerativeModel("gemini-2.5-flash")
 
 
+def get_topics(request):
+    topics = (
+        QuestionBank.objects
+        .exclude(topic__isnull=True)
+        .exclude(topic__exact="")
+        .order_by("topic")
+        .values_list("topic", flat=True)
+        .distinct()
+    )
+    return JsonResponse({"topics": sorted(set(topics))})
+
+
+
 def interview_summary(request):
     """
     Returns interview summary for a given session.

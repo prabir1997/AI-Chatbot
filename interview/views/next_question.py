@@ -35,6 +35,7 @@ model = genai.GenerativeModel("gemini-2.5-flash")
 class NextQuestionAPI(APIView):
     def get(self, request):
         session_id = request.GET.get("session_id")
+        topic = request.GET.get("topic", None)
         if not session_id:
             return Response(
                 {"error": "session_id is required"}, status=status.HTTP_400_BAD_REQUEST
@@ -67,9 +68,10 @@ class NextQuestionAPI(APIView):
         ).values_list('question_id', flat=True)
         
         # Find unanswered questions
-        unanswered = QuestionBank.objects.filter(
-            difficulty=session.difficulty_level
-        ).exclude(id__in=answered_question_ids)
+        filters = {"difficulty": session.difficulty_level}
+        if topic:
+            filters["topic"] = topic
+        unanswered = QuestionBank.objects.filter(**filters).exclude(id__in=answered_question_ids)
         
         if not unanswered.exists():
             # Generate new question if none left
@@ -89,8 +91,7 @@ class NextQuestionAPI(APIView):
                 new_question_text = generated_response.text.strip()
                 
                 question = QuestionBank.objects.create(
-                    question_text=new_question_text,
-                    topic="Python Programming",
+                    question_text=new_question_text,                    
                     difficulty=session.difficulty_level,
                 )
             except Exception as e:
