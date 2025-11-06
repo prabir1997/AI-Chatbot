@@ -19,7 +19,7 @@ from .start_session import start_session
 from .next_question import NextQuestionAPI
 from .question_bank import QuestionBankView
 from .submit_answer import SubmitAnswerAPI
-
+from .history import HistoryAPI
 
 
 genai.configure(api_key="AIzaSyDJ6TxQW9viXxpqXhvEmLSKUDrD3X76XX0")  # ⬅️ replace with your API key
