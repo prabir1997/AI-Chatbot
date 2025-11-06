@@ -214,10 +214,74 @@ async function loadTopics() {
   }
 }
 
+// ==================== USER HISTORY ====================
 async function loadUserHistory(email) {
-  // To be implemented - will fetch and display user's interview history
-  console.log("Loading history for:", email);
+  try {
+    const res = await fetch(`/interview/history/?email=${encodeURIComponent(email)}`);
+    const data = await res.json();
+    
+    if (data.error) {
+      document.getElementById("history-list").innerHTML = `<p>${data.error}</p>`;
+      return;
+    }
+
+    displayHistory(data);
+  } catch (error) {
+    console.error("Error loading history:", error);
+    document.getElementById("history-list").innerHTML = `<p>Error loading history</p>`;
+  }
 }
+
+function displayHistory(historyData) {
+  const historyList = document.getElementById("history-list");
+  
+  if (!historyData.sessions || historyData.sessions.length === 0) {
+    historyList.innerHTML = `<p>No previous interviews found. Start your first one!</p>`;
+    return;
+  }
+
+  historyList.innerHTML = `
+    <div class="history-header">
+      <strong>Welcome back, ${historyData.candidate.name}!</strong>
+      <p>Email: ${historyData.candidate.email}</p>
+    </div>
+    <table class="history-table">
+      <thead>
+        <tr>
+          <th>Date & Time</th>
+          <th>Session No</th>
+          <th>Questions</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${historyData.sessions.map(session => `
+          <tr class="session-row" data-session-id="${session.session_id}">
+            <td>${new Date(session.started_at).toLocaleString()}</td>
+            <td>${session.session_id}</td>
+            <td>
+              <div class="questions-list">
+                ${session.questions.map(question => 
+                  `<div class="question-item">"${question}"</div>`
+                ).join('')}
+              </div>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+
+  // Add click event to table rows
+  document.querySelectorAll('.session-row').forEach(row => {
+    row.addEventListener('click', function() {
+      const sessionId = this.getAttribute('data-session-id');
+      viewSessionDetails(sessionId);
+    });
+  });
+}
+
+
+
 
 async function showSummary() {
   const res = await fetch(`/interview/summary/?session_id=${sessionId}`);

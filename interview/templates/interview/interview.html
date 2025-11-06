@@ -17,29 +17,40 @@
   </div>
 
   <!-- Dashboard Section (Initially Hidden) -->
-  <div id="dashboard-section" class="card hidden">
+<div id="dashboard-section" class="card hidden">
+  <!-- Welcome Header at Top Right -->
+  <div id="welcome-header">
+    <strong>Welcome back, <span id="welcome-name"></span>!</strong>
+    <p>Email: <span id="welcome-email"></span></p>
+  </div>
+
+  <div class="dashboard-columns">
     <!-- Start Interview Section -->
-    <div id="start-interview-section">
-      <h3>Start New Interview</h3>
-      <select id="question-count"></select>
-      <select id="difficulty">
-        <option value="easy" selected>Easy</option>
-        <option value="medium">Medium</option>
-        <option value="hard">Hard</option>
-      </select><br><br>
-      <select id="topic" multiple>
-        <option value="" selected>All Topics</option>
-      </select><br><br>
-      <button id="start-interview-btn">Start Interview</button>
+    <div class="column">
+      <div id="start-interview-section" class="dashboard-card">
+        <h3>Start New Interview</h3>
+        <select id="question-count"></select>
+        <select id="difficulty">
+          <option value="easy" selected>Easy</option>
+          <option value="medium">Medium</option>
+          <option value="hard">Hard</option>
+        </select><br><br>
+        <select id="topic" multiple>
+          <option value="" selected>All Topics</option>
+        </select><br><br>
+        <button id="start-interview-btn">Start Interview</button>
+      </div>
     </div>
 
     <!-- History Section -->
-    <div id="history-section">
-      <h3>Your Interview History</h3>
-      <div id="history-list"></div>
+    <div class="column">
+      <div id="history-section" class="dashboard-card">
+        <h3>Your Interview History</h3>
+        <div id="history-list"></div>
+      </div>
     </div>
   </div>
-
+</div>
   <!-- Interview Session (Initially Hidden) -->
   <div id="question-section" class="card hidden">
     <button id="clear-session-btn" style="float: right; background-color: #ff4444; color: white;">Clear Session</button>

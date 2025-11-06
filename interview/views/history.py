@@ -18,14 +18,20 @@ class HistoryAPI(APIView):
         
         session_history = []
         for session in sessions:
+            # Get all questions from this session
+            questions = []
+            for response in session.responses.all():
+                questions.append(response.question.question_text)
+                
+            if session.responses.count() == 0:
+                continue  # Skip sessions with no responses
+                
             session_history.append({
                 "session_id": session.id,
                 "started_at": session.started_at,
                 "ended_at": session.ended_at,
                 "difficulty": session.difficulty_level,
-                "target_questions": session.target_question_count,
-                "completed_questions": session.responses.count(),
-                "status": "Completed" if session.ended_at else "In Progress"
+                "questions": questions
             })
             
         return Response({
