@@ -18,7 +18,15 @@ function clearSession() {
 function checkExistingSession() {
   const savedSessionId = localStorage.getItem("interviewSessionId");
   const savedEmail = localStorage.getItem("interviewEmail");
+  const isLoggedIn = localStorage.getItem("isLoggedIn");
 
+  // If user is logged in but no active interview, show dashboard
+  if (isLoggedIn === 'true' && savedEmail) {
+    showDashboard(savedEmail);
+    return;
+  }
+
+  // If user has active interview session
   if (savedSessionId && savedEmail) {
     sessionId = savedSessionId;
     document.getElementById("email").value = savedEmail;
@@ -41,6 +49,7 @@ function handleLogin() {
 
   localStorage.setItem('userName', name);
   localStorage.setItem('userEmail', email);
+  localStorage.setItem('isLoggedIn', 'true');
   showDashboard(email);
 }
 
@@ -133,7 +142,7 @@ async function loadNextQuestion() {
     document.getElementById("question-text").textContent = data.question_text;
     document.getElementById("feedback").textContent = "";
     document.getElementById("answer").value = "";
-    
+
     document.getElementById("next-btn").classList.add("hidden");
     document.getElementById("submit-btn").classList.remove("hidden");
     document.getElementById("submit-btn").disabled = false;
@@ -219,7 +228,7 @@ async function loadUserHistory(email) {
   try {
     const res = await fetch(`/interview/history/?email=${encodeURIComponent(email)}`);
     const data = await res.json();
-    
+
     if (data.error) {
       document.getElementById("history-list").innerHTML = `<p>${data.error}</p>`;
       return;
@@ -234,7 +243,7 @@ async function loadUserHistory(email) {
 
 function displayHistory(historyData) {
   const historyList = document.getElementById("history-list");
-  
+
   if (!historyData.sessions || historyData.sessions.length === 0) {
     historyList.innerHTML = `<p>No previous interviews found. Start your first one!</p>`;
     return;
@@ -258,9 +267,9 @@ function displayHistory(historyData) {
             <td>${new Date(session.started_at).toLocaleString()}</td> 
             <td>
               <div class="questions-list">
-                ${session.questions.map(question => 
-                  `<div class="question-item">"${question}"</div>`
-                ).join('')}
+                ${session.questions.map(question =>
+    `<div class="question-item">"${question}"</div>`
+  ).join('')}
               </div>
             </td>
           </tr>
@@ -271,7 +280,7 @@ function displayHistory(historyData) {
 
   // Add click event to table rows
   document.querySelectorAll('.session-row').forEach(row => {
-    row.addEventListener('click', function() {
+    row.addEventListener('click', function () {
       const sessionId = this.getAttribute('data-session-id');
       viewSessionDetails(sessionId);
     });
@@ -318,5 +327,18 @@ window.addEventListener("DOMContentLoaded", function () {
 
   // Initialize the app
   loadTopics();
+  
+  // Check if user is already logged in
+  const isLoggedIn = localStorage.getItem("isLoggedIn");
+  const savedEmail = localStorage.getItem("userEmail");
+  
+  if (isLoggedIn === 'true' && savedEmail) {
+    document.getElementById('login-section').classList.add('hidden');
+    document.getElementById('dashboard-section').classList.remove('hidden');
+    document.getElementById('name').value = localStorage.getItem('userName') || '';
+    document.getElementById('email').value = savedEmail;
+    loadUserHistory(savedEmail);
+  }
+  
   checkExistingSession();
 });
