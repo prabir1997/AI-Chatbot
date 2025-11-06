@@ -248,16 +248,14 @@ function displayHistory(historyData) {
     <table class="history-table">
       <thead>
         <tr>
-          <th>Date & Time</th>
-          <th>Session No</th>
+          <th>Date & Time</th>     
           <th>Questions</th>
         </tr>
       </thead>
       <tbody>
         ${historyData.sessions.map(session => `
           <tr class="session-row" data-session-id="${session.session_id}">
-            <td>${new Date(session.started_at).toLocaleString()}</td>
-            <td>${session.session_id}</td>
+            <td>${new Date(session.started_at).toLocaleString()}</td> 
             <td>
               <div class="questions-list">
                 ${session.questions.map(question => 

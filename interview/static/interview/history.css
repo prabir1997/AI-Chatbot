@@ -1,0 +1,60 @@
+/* History Table Styles */
+.history-header {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.history-table th {
+  background: #007bff;
+  color: white;
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+}
+
+.history-table td {
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  vertical-align: top;
+}
+
+.history-table tr.session-row {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.history-table tr.session-row:hover {
+  background-color: #f8f9fa;
+}
+
+.history-table tr.session-row:last-child td {
+  border-bottom: none;
+}
+
+.questions-list {
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.question-item {
+  padding: 4px 0;
+  font-size: 14px;
+  border-bottom: 1px solid #f0f0f0;
+  font-style: italic;
+}
+
+.question-item:last-child {
+  border-bottom: none;
+}
