@@ -30,9 +30,12 @@ genai.configure(api_key="AIzaSyDJ6TxQW9viXxpqXhvEmLSKUDrD3X76XX0")
 model = genai.GenerativeModel("gemini-2.5-flash")
 
 
+
+
 class NextQuestionAPI(APIView):
     def get(self, request):
         session_id = request.GET.get("session_id")
+        topic = request.GET.get("topic", None)
         if not session_id:
             return Response(
                 {"error": "session_id is required"}, status=status.HTTP_400_BAD_REQUEST
@@ -54,24 +57,24 @@ class NextQuestionAPI(APIView):
             return Response(
                 {
                     "interview_complete": True,
-                    "message": "Interview completed! Please proceed to evaluation.",
+                    "message": "Interview completed. Please proceed to evaluation.",
                     "session_progress": f"Session Complete: {session_answered_count}/{target_count} answered",
                 }
             )
 
-        # current_session_answered = CandidateResponse.objects.filter(
-        #     session=session
-        # ).values_list("question_id", flat=True)
-        # unanswered = QuestionBank.objects.filter(
-        #     difficulty=session.difficulty_level
-        # ).exclude(id__in=Subquery(current_session_answered))
-
-        current_session_questions = InterviewSession.objects.filter(id=session_id).values_list('question', flat=True)
-        unanswered = QuestionBank.objects.filter(
-            difficulty=session.difficulty_level
-        ).exclude(id__in=Subquery(current_session_questions))
+        # Get already answered question IDs in this session
+        answered_question_ids = CandidateResponse.objects.filter(
+            session=session
+        ).values_list('question_id', flat=True)
+        
+        # Find unanswered questions
+        filters = {"difficulty": session.difficulty_level}
+        if topic:
+            filters["topic"] = topic
+        unanswered = QuestionBank.objects.filter(**filters).exclude(id__in=answered_question_ids)
         
         if not unanswered.exists():
+            # Generate new question if none left
             generation_prompt = f"""Generate a {session.difficulty_level} Python interview question.
                         STRICT RULES:
                         - ONLY the question text
@@ -87,10 +90,8 @@ class NextQuestionAPI(APIView):
                 generated_response = model.generate_content(generation_prompt)
                 new_question_text = generated_response.text.strip()
                 
-                
                 question = QuestionBank.objects.create(
-                    question_text=new_question_text,
-                    topic="Python Programming",
+                    question_text=new_question_text,                    
                     difficulty=session.difficulty_level,
                 )
             except Exception as e:
@@ -110,3 +111,13 @@ class NextQuestionAPI(APIView):
                 "session_progress": f"{session_answered_count + 1}/{target_count}",
             }
         )
+
+
+
+
+
+
+
+
+
+

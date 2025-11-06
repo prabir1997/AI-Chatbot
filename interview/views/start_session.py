@@ -41,8 +41,8 @@ def start_session(request):
             return JsonResponse({"error": "Name and email required"}, status=400)
 
         # Validate inputs
-        if question_count not in [5, 10]:
-            return JsonResponse({"error": "Question count must be 5 or 10"}, status=400)
+        # if question_count not in [5, 10]:
+        #     return JsonResponse({"error": "Question count must be 5 or 10"}, status=400)
         if difficulty not in ["easy", "medium", "hard"]:
             return JsonResponse({"error": "Invalid difficulty level"}, status=400)
 

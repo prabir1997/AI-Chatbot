@@ -10,23 +10,46 @@ function clearSession() {
 }
 
 // Check for existing session on page load
-window.addEventListener("DOMContentLoaded", function() {
+window.addEventListener("DOMContentLoaded", function () {
   const savedSessionId = localStorage.getItem("interviewSessionId");
   const savedEmail = localStorage.getItem("interviewEmail");
-  
+
   if (savedSessionId && savedEmail) {
     // Restore session data
     sessionId = savedSessionId;
     document.getElementById("email").value = savedEmail;
-    
+
     // Hide start section and show question section
     document.getElementById("start-section").classList.add("hidden");
     document.getElementById("question-section").classList.remove("hidden");
-    
+
     // Load next question to continue the interview
     loadNextQuestion();
   }
 });
+
+async function loadTopics() {
+  try {
+    const res = await fetch("/interview/get_topics/");
+    const data = await res.json();
+    const topicSelect = document.getElementById("topic");
+
+    // Populate dropdown
+    data.topics.forEach(topic => {
+      const opt = document.createElement("option");
+      opt.value = topic;
+      opt.textContent = topic;
+      topicSelect.appendChild(opt);
+    });
+  } catch (error) {
+    console.error("Error loading topics:", error);
+  }
+}
+
+// Load topics on page load
+window.addEventListener("DOMContentLoaded", loadTopics);
+
+
 
 async function startInterview() {
   const name = document.getElementById("name").value.trim();
@@ -42,7 +65,7 @@ async function startInterview() {
   // Check if we have an existing session for this email
   const savedSessionId = localStorage.getItem("interviewSessionId");
   const savedEmail = localStorage.getItem("interviewEmail");
-  
+
   if (savedSessionId && savedEmail && savedEmail.toLowerCase() === email.toLowerCase()) {
     // Resume existing session
     sessionId = savedSessionId;
@@ -52,12 +75,12 @@ async function startInterview() {
     const res = await fetch("/interview/start_session/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-      name, 
-      email, 
-      question_count: parseInt(questionCount), // Send selected count
-      difficulty: difficulty // Send selected difficulty
-    })
+      body: JSON.stringify({
+        name,
+        email,
+        question_count: parseInt(questionCount), // Send selected count
+        difficulty: difficulty // Send selected difficulty
+      })
     });
 
     const data = await res.json();
@@ -88,71 +111,66 @@ async function loadNextQuestion() {
     return;
   }
 
-  const res = await fetch(`/interview/next-question/?session_id=${sessionId}`);
-  const data = await res.json();
+  // Show loader and disable next button
+  document.getElementById("loader").classList.remove("hidden");
+  document.getElementById("next-btn").disabled = true;
 
-  if (data.error) {
-    console.error("Error loading question:", data.error);
-    alert("Error loading question: " + data.error);
-    return;
-  }
+  try {
+    const topicSelect = document.getElementById("topic");
+    const selectedTopics = Array.from(topicSelect.selectedOptions)
+      .map(opt => opt.value)
+      .filter(topic => topic !== ""); // Remove empty "All Topics"
+    const topicParam = selectedTopics.join(',');
 
-  // Check if interview is complete - UPDATED LOGIC
-  if (data.interview_complete || (data.message && data.message.includes("completed"))) {
-    // Show completion message and evaluation button
-    document.getElementById("question-text").textContent = "🎉 Interview Completed!";
-    document.getElementById("feedback").textContent = data.message || "You've answered all questions for this session.";
-    document.getElementById("answer").value = "";
-    document.getElementById("answer").style.display = "none";
-    
-    // Hide submit button, show evaluation button
-    document.getElementById("submit-btn").classList.add("hidden");
-    document.getElementById("next-btn").classList.add("hidden");
-    
-    // Create or show evaluation button
-    let evalBtn = document.getElementById("eval-btn");
-    if (!evalBtn) {
-      evalBtn = document.createElement("button");
-      evalBtn.id = "eval-btn";
-      evalBtn.textContent = "View Evaluation Summary";
-      evalBtn.className = "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded";
-      evalBtn.onclick = showSummary;
-      document.querySelector(".container").appendChild(evalBtn);
-    } else {
-      evalBtn.classList.remove("hidden");
+    const res = await fetch(`/interview/next-question/?session_id=${sessionId}&topic=${topicParam}`);
+    const data = await res.json();
+
+    if (data.error) {
+      console.error("Error loading question:", data.error);
+      alert("Error loading question: " + data.error);
+      return;
     }
-    
-    // Update progress display
+
+
+
+    // Check if interview is complete
+    if (data.interview_complete === true) {
+      // Redirect to Django summary page
+      document.getElementById("question-section").classList.add("hidden");
+      document.getElementById("summary-section").classList.remove("hidden");
+      showSummary();
+    }
+
+    // Normal question flow
+    currentQuestion = data;
+    document.getElementById("question-text").textContent = data.question_text;
+    document.getElementById("feedback").textContent = "";
+    document.getElementById("answer").value = "";
+    document.getElementById("answer").style.display = "block";
+
+    // Hide next button and show submit button
+    document.getElementById("next-btn").classList.add("hidden");
+    document.getElementById("submit-btn").classList.remove("hidden");
+    document.getElementById("submit-btn").disabled = false;
+
+    // Display progress if available
     if (data.session_progress) {
       document.getElementById("progress").textContent = data.session_progress;
+    } else {
+      document.getElementById("progress").textContent = "";
     }
-    
-    return;
-  }
-
-  // Normal question flow
-  currentQuestion = data;
-  document.getElementById("question-text").textContent = data.question_text;
-  document.getElementById("feedback").textContent = "";
-  document.getElementById("answer").value = "";
-  document.getElementById("answer").style.display = "block"; // Make sure answer box is visible
-  
-  // Hide next button and show submit button
-  document.getElementById("next-btn").classList.add("hidden");
-  document.getElementById("submit-btn").classList.remove("hidden");
-  document.getElementById("submit-btn").disabled = false;
-  
-  // Display progress if available
-  if (data.session_progress) {
-    document.getElementById("progress").textContent = data.session_progress;
-  } else {
-    document.getElementById("progress").textContent = "";
+  } catch (error) {
+    alert("Error loading question: " + error.message);
+  } finally {
+    // Hide loader and re-enable next button
+    document.getElementById("loader").classList.add("hidden");
+    document.getElementById("next-btn").disabled = false;
   }
 }
 
-
 async function submitAnswer() {
   const answer = document.getElementById("answer").value.trim();
+  const feedbackEl = document.getElementById("feedback");
 
   if (!answer) {
     alert("Please type your answer before submitting!");
@@ -162,8 +180,9 @@ async function submitAnswer() {
   // Show loader and disable submit button
   document.getElementById("loader").classList.remove("hidden");
   document.getElementById("submit-btn").disabled = true;
-  document.getElementById("feedback").textContent = "";
-  
+  feedbackEl.textContent = "";
+  feedbackEl.classList.remove("correct-glow", "wrong-glow"); // 🔹 clear previous glow
+
   try {
     const res = await fetch("/interview/submit-answer/", {
       method: "POST",
@@ -178,7 +197,20 @@ async function submitAnswer() {
     const data = await res.json();
 
     document.getElementById("feedback").textContent = data.feedback || "No feedback available.";
-    
+    feedbackEl.classList.add("feedback"); // 🔹 ensure base style
+
+    // 🔹 Add glow effect based on result
+    if (data.is_correct) {
+      feedbackEl.classList.add("correct-glow");
+    } else {
+      feedbackEl.classList.add("wrong-glow");
+    }
+
+    // 🔹 Optional: remove glow after 2 seconds
+    setTimeout(() => {
+      feedbackEl.classList.remove("correct-glow", "wrong-glow");
+    }, 2000);
+
     // Hide submit button and show next button
     document.getElementById("submit-btn").classList.add("hidden");
     document.getElementById("next-btn").classList.remove("hidden");
@@ -192,15 +224,30 @@ async function submitAnswer() {
 }
 
 async function showSummary() {
-  document.getElementById("question-section").classList.add("hidden");
-  document.getElementById("summary-section").classList.remove("hidden");
-
   const res = await fetch(`/interview/summary/?session_id=${sessionId}`);
   const data = await res.json();
 
-  document.getElementById("summary").textContent = JSON.stringify(data, null, 2);
-  
-  // Clear localStorage after completing interview
-  localStorage.removeItem("interviewSessionId");
-  localStorage.removeItem("interviewEmail");
+  document.getElementById("question-section").classList.add("hidden");
+  document.getElementById("summary-section").classList.remove("hidden");
+
+  // 🟢 Build formatted summary
+  document.getElementById("summary").innerHTML = `
+    <strong>Candidate:</strong> ${data.candidate}<br>
+    <strong>Email:</strong> ${data.email}<br>
+    <strong>Total Questions:</strong> ${data.total_questions}<br>
+    <strong>Average Score:</strong> ${data.average_score}<br>
+    <strong>Weak Topics:</strong> ${data.weak_topics.join(", ")}<br><br>
+
+    <h3>Details:</h3>
+    ${data.details.map(d => `
+      <div style="margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">
+        <strong>Question:</strong> ${d.question}<br>
+        <strong>Your Answer:</strong> ${d.answer}<br>
+        <strong>Feedback:</strong> ${d.feedback}<br>
+        <strong>Score:</strong> ${d.score}<br>
+        <strong>Topic:</strong> ${d.topic}
+      </div>
+    `).join("")}
+  `;
 }
+
