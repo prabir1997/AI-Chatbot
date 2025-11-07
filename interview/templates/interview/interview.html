@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>AI Python Interview</title>
-  <link rel="stylesheet" href="/static/interview/style.css">
+  <link rel="stylesheet" href="/static/interview/css/style.css">
 </head>
 <body>
   <h1>🤖 AI Python Interview</h1>
@@ -19,15 +19,17 @@
   <!-- Dashboard Section (Initially Hidden) -->
   <div id="dashboard-section" class="card hidden">
     <!-- Welcome Header at Top Right -->
-
-    <!-- 🔹 Top Section: Welcome + Start Interview -->
     <div id="top-section" class="dashboard-box">
-      {% comment %} <div id="welcome-header">
+       <div id="welcome-header">
         <strong>Welcome back, <span id="welcome-name"></span>!</strong><br>
         <p>Email: <span id="welcome-email"></span></p>
-      </div> {% endcomment %}
+        <button id="logout">Logout</button>
+      </div> 
+    
+    <!-- 🔹 Top Section: Welcome + Start Interview -->
+    
 
-
+      
       <div id="start-interview-section" class="dashboard-card">
         <h3>Start New Interview</h3>
         <select id="question-count"></select>
@@ -73,7 +75,15 @@
     <button id="new-interview-btn">Start New Interview</button>
   </div>
 
-  <script src="/static/interview/interview.js"></script>
+  <!-- Modularized JS: load globals and modules in order -->
+  <script src="/static/interview/js/globals.js"></script>
+  <script src="/static/interview/js/utils.js"></script>
+  <script src="/static/interview/js/session.js"></script>
+  <script src="/static/interview/js/user_flow.js"></script>
+  <script src="/static/interview/js/question_flow.js"></script>
+  <script src="/static/interview/js/data.js"></script>
+  <script src="/static/interview/js/history.js"></script>
+  <script src="/static/interview/js/main.js"></script>
   <script>
     // Initialize question count dropdown
     const questionCount = document.getElementById("question-count");
