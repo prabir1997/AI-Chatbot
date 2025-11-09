@@ -67,11 +67,23 @@ class NextQuestionAPI(APIView):
             session=session
         ).values_list('question_id', flat=True)
         
+        # Get already answered question IDs in previous sessions (excluding current one)
+        previous_session_ids = InterviewSession.objects.filter(
+            candidate=session.candidate
+        ).exclude(id=session.id).values_list('id', flat=True)
+
+        previously_answered_question_ids = CandidateResponse.objects.filter(
+            session_id__in=previous_session_ids,
+            is_correct=True
+        ).values_list('question_id', flat=True)
+        
+        all_answered_ids = list(answered_question_ids) + list(previously_answered_question_ids)
+
         # Find unanswered questions
         filters = {"difficulty": session.difficulty_level}
         if topic:
             filters["topic"] = topic
-        unanswered = QuestionBank.objects.filter(**filters).exclude(id__in=answered_question_ids)
+        unanswered = QuestionBank.objects.filter(**filters).exclude(id__in=all_answered_ids)
         
         if not unanswered.exists():
             # Generate new question if none left
