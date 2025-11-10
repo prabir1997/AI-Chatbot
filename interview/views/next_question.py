@@ -34,20 +34,56 @@ model = genai.GenerativeModel("gemini-2.5-flash")
 
 class NextQuestionAPI(APIView):
     def get(self, request):
+        # Input validation
+        validation_error = self._validate_request(request)
+        if validation_error:
+            return validation_error
+
         session_id = request.GET.get("session_id")
         topic = request.GET.get("topic", None)
+        
+        # Get session
+        session_result = self._get_session(session_id)
+        if isinstance(session_result, Response):
+            return session_result
+        session = session_result
+
+        # Check if interview is complete
+        completion_check = self._check_interview_completion(session)
+        if completion_check:
+            return completion_check
+
+        # Get next question
+        next_question_result = self._get_next_question(session, topic)
+        if isinstance(next_question_result, Response):
+            return next_question_result
+        
+        question, session_answered_count = next_question_result
+
+        return self._build_success_response(question, session, session_answered_count)
+
+    def _validate_request(self, request):
+        """Validate required parameters"""
+        session_id = request.GET.get("session_id")
         if not session_id:
             return Response(
-                {"error": "session_id is required"}, status=status.HTTP_400_BAD_REQUEST
+                {"error": "session_id is required"}, 
+                status=status.HTTP_400_BAD_REQUEST
             )
+        return None
 
+    def _get_session(self, session_id):
+        """Retrieve session by ID"""
         try:
-            session = InterviewSession.objects.get(id=session_id)
+            return InterviewSession.objects.get(id=session_id)
         except InterviewSession.DoesNotExist:
             return Response(
-                {"error": "Invalid session_id"}, status=status.HTTP_404_NOT_FOUND
+                {"error": "Invalid session_id"}, 
+                status=status.HTTP_404_NOT_FOUND
             )
 
+    def _check_interview_completion(self, session):
+        """Check if interview session is complete"""
         session_answered_count = CandidateResponse.objects.filter(
             session=session
         ).count()
@@ -61,58 +97,98 @@ class NextQuestionAPI(APIView):
                     "session_progress": f"Session Complete: {session_answered_count}/{target_count} answered",
                 }
             )
+        return None
 
-        # Get already answered question IDs in this session
-        answered_question_ids = CandidateResponse.objects.filter(
+    def _get_answered_question_ids(self, session):
+        """Get all answered question IDs for this candidate"""
+        # Current session answered questions
+        current_answered_ids = CandidateResponse.objects.filter(
             session=session
         ).values_list('question_id', flat=True)
         
-        # Find unanswered questions
+        # Previous sessions correctly answered questions
+        previous_sessions = InterviewSession.objects.filter(
+            candidate=session.candidate
+        ).exclude(id=session.id)
+        
+        previous_answered_ids = CandidateResponse.objects.filter(
+            session_id__in=previous_sessions,
+            is_correct=True
+        ).values_list('question_id', flat=True)
+        
+        return list(current_answered_ids) + list(previous_answered_ids)
+
+    def _find_unanswered_question(self, session, topic, answered_question_ids):
+        """Find an unanswered question from the database"""
         filters = {"difficulty": session.difficulty_level}
         if topic:
             filters["topic"] = topic
-        unanswered = QuestionBank.objects.filter(**filters).exclude(id__in=answered_question_ids)
+            
+        unanswered = QuestionBank.objects.filter(**filters).exclude(
+            id__in=answered_question_ids
+        )
         
-        if not unanswered.exists():
-            # Generate new question if none left
-            generation_prompt = f"""Generate a {session.difficulty_level} Python interview question.
-                        STRICT RULES:
-                        - ONLY the question text
-                        - NO examples, explanations, or code
-                        - MAXIMUM 15 words
-                        - Format: Just the question ending with '?'
+        if unanswered.exists():
+            return random.choice(list(unanswered))
+        return None
 
-                        Example: "How do you reverse a string in Python?"
-                        Example: "What is the difference between list and tuple?"
+    def _generate_new_question(self, session, topic):
+        """Generate a new question when none are available"""
+        generation_prompt = f"""Generate a {session.difficulty_level} , topic: {topic} of Python interview question.
+                    STRICT RULES:
+                    - ONLY the question text
+                    - NO examples, explanations, or code
+                    - MAXIMUM 15 words
+                    - Format: Just the question ending with '?'
 
-                        Question:"""
+                    Example: "How do you reverse a string in Python?"
+                    Example: "What is the difference between list and tuple?"
+
+                    Question:"""
+        try:
+            generated_response = model.generate_content(generation_prompt)
+            new_question_text = generated_response.text.strip()
+            
+            return QuestionBank.objects.create(
+                question_text=new_question_text,                    
+                difficulty=session.difficulty_level,
+            )
+        except Exception as e:
+            raise Exception(f"Failed to generate question: {str(e)}")
+
+    def _get_next_question(self, session, topic):
+        """Main logic to get the next question"""
+        session_answered_count = CandidateResponse.objects.filter(
+            session=session
+        ).count()
+        
+        # Get all answered question IDs
+        answered_question_ids = self._get_answered_question_ids(session)
+        
+        # Try to find an unanswered question
+        question = self._find_unanswered_question(session, topic, answered_question_ids)
+        
+        # Generate new question if none found
+        if not question:
             try:
-                generated_response = model.generate_content(generation_prompt)
-                new_question_text = generated_response.text.strip()
-                
-                question = QuestionBank.objects.create(
-                    question_text=new_question_text,                    
-                    difficulty=session.difficulty_level,
-                )
+                question = self._generate_new_question(session, topic)
             except Exception as e:
                 return Response(
-                    {"error": f"Failed to generate question: {str(e)}"},
+                    {"error": str(e)},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
-        else:
-            question = random.choice(list(unanswered))
+        
+        return question, session_answered_count
 
-        return Response(
-            {
-                "question_id": question.id,
-                "question_text": question.question_text,
-                "topic": question.topic,
-                "difficulty": question.difficulty,
-                "session_progress": f"{session_answered_count + 1}/{target_count}",
-            }
-        )
-
-
+    def _build_success_response(self, question, session, session_answered_count):
+        """Build the success response"""
+        return Response({
+            "question_id": question.id,
+            "question_text": question.question_text,
+            "topic": question.topic,
+            "difficulty": question.difficulty,
+            "session_progress": f"{session_answered_count + 1}/{session.target_question_count}",
+        })
 
 
 
