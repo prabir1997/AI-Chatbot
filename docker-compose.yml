@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  web:
+    build: .
+    container_name: ai_chatbot_web
+    command: python manage.py runserver 0.0.0.0:8001
+    ports:
+      - "8001:8001"  # Host:Container
+    volumes:
+      - .:/app
+  
