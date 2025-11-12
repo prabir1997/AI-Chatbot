@@ -152,6 +152,7 @@ class NextQuestionAPI(APIView):
             return QuestionBank.objects.create(
                 question_text=new_question_text,                    
                 difficulty=session.difficulty_level,
+                topic=topic if topic else "General",
             )
         except Exception as e:
             raise Exception(f"Failed to generate question: {str(e)}")
